@@ -1,36 +1,121 @@
-// auth-guard.js
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard – ProjectMap</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f8f8f8; }
+    h2 { margin-bottom: 20px; }
+    #projectList { margin-top: 20px; }
+    input, button, select { padding: 10px; margin: 5px; }
+    .project-item { background: #fff; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+    .project-item button { margin-left: 10px; }
+  </style>
+  <!-- Auth Guard Script -->
+  <script src="auth-guard.js" defer></script>
+</head>
+<body>
+  <h2>🛠 Admin Project Dashboard</h2>
 
-// ✅ Initialize Firebase if not already done
-if (!firebase.apps.length) {
-  firebase.initializeApp({
-    apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
-    authDomain: "projectmap-35a69.firebaseapp.com",
-    projectId: "projectmap-35a69"
-  });
-}
+  <div>
+    <input type="text" id="newProjectName" placeholder="New Project Name">
+    <button onclick="createProject()">➕ Create Project</button>
+  </div>
 
-// ✅ Auth redirect protection
-firebase.auth().onAuthStateChanged(user => {
-  const path = window.location.pathname;
-  const isLogin = path.includes("login.html");
+  <div>
+    <label for="filterSelect">Filter by Project:</label>
+    <select id="filterSelect" onchange="filterProjects()">
+      <option value="all">All Projects</option>
+    </select>
+  </div>
 
-  if (!user && !isLogin) {
-    window.location.href = "login.html";
-  } else if (user && isLogin) {
-    window.location.href = "admin.html"; // Default route
-  } else {
-    const userInfoBar = document.createElement("div");
-    userInfoBar.style.position = "fixed";
-    userInfoBar.style.top = "0";
-    userInfoBar.style.right = "0";
-    userInfoBar.style.background = "#333";
-    userInfoBar.style.color = "#fff";
-    userInfoBar.style.padding = "5px 15px";
-    userInfoBar.style.fontSize = "14px";
-    userInfoBar.innerHTML = `
-      Logged in as <strong>${user.email}</strong>
-      <button onclick="firebase.auth().signOut().then(() => location.href='login.html')">Sign Out</button>
-    `;
-    document.body.appendChild(userInfoBar);
-  }
-});
+  <div id="projectList"></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.appspot.com",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    auth.onAuthStateChanged(async user => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      if (!userDoc.exists || userDoc.data().role !== 'admin') {
+        alert('Access denied.');
+        window.location.href = 'login.html';
+      } else {
+        loadProjects();
+      }
+    });
+
+    async function loadProjects() {
+      const list = document.getElementById("projectList");
+      const filterSelect = document.getElementById("filterSelect");
+      list.innerHTML = "<h3>📁 Existing Projects</h3>";
+      filterSelect.innerHTML = '<option value="all">All Projects</option>';
+      const snapshot = await db.collection("projects").get();
+      snapshot.forEach(doc => {
+        const option = document.createElement("option");
+        option.value = doc.id;
+        option.text = doc.data().name;
+        filterSelect.appendChild(option);
+        renderProject(doc);
+      });
+    }
+
+    function renderProject(doc) {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.className = "project-item";
+      div.dataset.projectId = doc.id;
+      div.innerHTML = `
+        <strong>${data.name}</strong>
+        <button onclick="goToProject('${doc.id}')">Open</button>
+      `;
+      document.getElementById("projectList").appendChild(div);
+    }
+
+    async function createProject() {
+      const name = document.getElementById("newProjectName").value.trim();
+      if (!name) return alert("Enter project name");
+      const ref = await db.collection("projects").add({
+        name: name,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy: firebase.auth().currentUser.uid
+      });
+      window.location.href = `map.html?projectId=${ref.id}`;
+    }
+
+    function goToProject(projectId) {
+      window.location.href = `map.html?projectId=${projectId}`;
+    }
+
+    function filterProjects() {
+      const selected = document.getElementById("filterSelect").value;
+      document.querySelectorAll(".project-item").forEach(item => {
+        if (selected === "all" || item.dataset.projectId === selected) {
+          item.style.display = "block";
+        } else {
+          item.style.display = "none";
+        }
+      });
+    }
+  </script>
+</body>
+</html>
