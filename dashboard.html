@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard – ProjectMap</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f8f8f8; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #eee; }
+    select, button { padding: 6px; }
+  </style>
+</head>
+<body>
+  <h2>🗂 Project Segment Dashboard</h2>
+  <table id="segmentsTable">
+    <thead>
+      <tr>
+        <th>Ticket Number</th>
+        <th>Location</th>
+        <th>Status</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
+    import { getFirestore, collection, getDocs, updateDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.firebasestorage.app",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const tableBody = document.querySelector("#segmentsTable tbody");
+    const segmentsRef = collection(db, "segments");
+
+    async function loadSegments() {
+      const snapshot = await getDocs(segmentsRef);
+      tableBody.innerHTML = "";
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const row = document.createElement("tr");
+
+        const ticketCell = document.createElement("td");
+        ticketCell.textContent = data.ticketNumber || "";
+        row.appendChild(ticketCell);
+
+        const locationCell = document.createElement("td");
+        locationCell.textContent = data.location || "";
+        row.appendChild(locationCell);
+
+        const statusCell = document.createElement("td");
+        const select = document.createElement("select");
+        ["Not Located", "In Progress", "Located"].forEach(status => {
+          const option = document.createElement("option");
+          option.value = status;
+          option.textContent = status;
+          if (data.status === status) option.selected = true;
+          select.appendChild(option);
+        });
+        select.addEventListener("change", async () => {
+          await updateDoc(doc(db, "segments", docSnap.id), {
+            status: select.value,
+            timestamp: serverTimestamp()
+          });
+          loadSegments(); // Reload after update
+        });
+        statusCell.appendChild(select);
+        row.appendChild(statusCell);
+
+        const timeCell = document.createElement("td");
+        const updated = data.timestamp?.toDate?.().toLocaleString?.() || "";
+        timeCell.textContent = updated;
+        row.appendChild(timeCell);
+
+        tableBody.appendChild(row);
+      });
+    }
+
+    loadSegments();
+  </script>
+</body>
+</html>
