@@ -1,81 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>USIC Project Tracker Map</title>
-  <meta charset="utf-8" />
+  <title>ProjectMap – Interactive Map</title>
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; }
-    .popup-form {
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-    }
+    html, body, #map { margin: 0; padding: 0; height: 100%; }
     .popup-form input, .popup-form select {
       width: 100%;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .popup-form button {
-      margin-top: 6px;
       width: 100%;
+      margin-top: 6px;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <!-- Leaflet Libraries -->
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+
+  <!-- Leaflet & Draw -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
   <script>
-    const map = L.map('map').setView([41.865, -103.667], 12);
-
-    // Base layers
-    const baseLayers = {
-      "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 20,
-        attribution: '&copy; OpenStreetMap contributors'
-      }),
-      "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 20,
-        attribution: 'Tiles &copy; Esri'
-      }),
-      "Topographic": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        maxZoom: 17,
-        attribution: '&copy; OpenTopoMap contributors'
-      })
+    // ✅ Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+      authDomain: "projectmap-35a69.firebaseapp.com",
+      projectId: "projectmap-35a69",
+      storageBucket: "projectmap-35a69.firebasestorage.app",
+      messagingSenderId: "676439686152",
+      appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
     };
-    baseLayers["OpenStreetMap"].addTo(map);
-    L.control.layers(baseLayers).addTo(map);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
+    // ✅ Init Map
+    const map = L.map('map').setView([41.865, -103.667], 12);
+    const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    baseLayer.addTo(map);
+    const drawnItems = new L.FeatureGroup().addTo(map);
 
+    // ✅ Draw Controls
+    L.control.layers(null, { "Drawn Segments": drawnItems }).addTo(map);
     const drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
-      draw: {
-        polygon: true,
-        polyline: true,
-        rectangle: false,
-        circle: false,
-        marker: false
-      }
+      draw: { polygon: true, polyline: true, marker: false, rectangle: false, circle: false }
     });
     map.addControl(drawControl);
 
+    // ✅ When shape drawn
     map.on(L.Draw.Event.CREATED, function (e) {
       const layer = e.layer;
       drawnItems.addLayer(layer);
-      const geojson = JSON.stringify(layer.toGeoJSON());
+      const geojson = layer.toGeoJSON();
 
-      const formHtml = `
+      const popupForm = `
         <div class="popup-form">
-          <label>Ticket Number:<br/><input type="text" id="ticketNumber" /></label><br/>
-          <label>Location:<br/><input type="text" id="location" /></label><br/>
-          <label>Work Start Date:<br/><input type="date" id="workStartDate" /></label><br/>
+          <label>Ticket Number:<br/><input id="ticketNumber" /></label><br/>
+          <label>Location:<br/><input id="location" /></label><br/>
           <label>Status:<br/>
             <select id="status">
               <option value="Not Located">Not Located</option>
@@ -83,62 +73,47 @@
               <option value="Located">Located</option>
             </select>
           </label><br/>
-          <button onclick="submitToSharePoint('${encodeURIComponent(geojson)}')">Submit</button>
+          <button onclick="submitData(${JSON.stringify(JSON.stringify(geojson))})">Submit</button>
         </div>
       `;
-
-      layer.bindPopup(formHtml).openPopup();
+      layer.bindPopup(popupForm).openPopup();
     });
 
-    async function submitToSharePoint(encodedGeoJSON) {
-      const title = document.getElementById('ticketNumber').value;
+    // ✅ Submit data to Firestore
+    async function submitData(encodedGeoJson) {
+      const geojson = JSON.parse(encodedGeoJson);
+      const ticket = document.getElementById('ticketNumber').value;
       const location = document.getElementById('location').value;
-      const workStartDate = document.getElementById('workStartDate').value;
       const status = document.getElementById('status').value;
-      const geojson = decodeURIComponent(encodedGeoJSON);
-
-      const item = {
-        '__metadata': { 'type': 'SP.Data.UsicProjecttrackerListItem' },
-        'Title': title,
-        'Location': location,
-        'Work_x0020_start_x0020_date': workStartDate,
-        'Status': status,
-        'GeoJSON': geojson
-      };
-
-      const siteUrl = "https://usicapps.sharepoint.com/sites/USICProjectTracker";
-      const listName = "USIC Project tracker";
 
       try {
-        const digest = await fetch(`${siteUrl}/_api/contextinfo`, {
-          method: "POST",
-          headers: { "Accept": "application/json;odata=verbose" }
-        }).then(res => res.json()).then(data => data.d.GetContextWebInformation.FormDigestValue);
-
-        const response = await fetch(`${siteUrl}/_api/web/lists/getbytitle('${listName}')/items`, {
-          method: "POST",
-          headers: {
-            "Accept": "application/json;odata=verbose",
-            "Content-Type": "application/json;odata=verbose",
-            "X-RequestDigest": digest
-          },
-          body: JSON.stringify(item)
+        await db.collection("segments").add({
+          ticketNumber: ticket,
+          location: location,
+          status: status,
+          geojson: geojson,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        if (response.ok) {
-          alert("✅ Success! Ticket submitted to SharePoint.");
-          location.reload();
-        } else {
-          alert("❌ Error submitting to SharePoint.");
-          console.error(await response.text());
-        }
-
+        alert("✅ Submitted!");
+        location.reload();
       } catch (err) {
-        alert("❌ Error: " + err.message);
-        console.error(err);
+        alert("❌ Failed to submit: " + err.message);
       }
     }
+
+    // ✅ Load saved shapes on load
+    db.collection("segments").get().then(snapshot => {
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const shape = L.geoJSON(data.geojson, {
+          style: {
+            color: data.status === "Located" ? "green" :
+                   data.status === "In Progress" ? "orange" : "red"
+          }
+        }).addTo(drawnItems);
+        shape.bindPopup(`<strong>${data.ticketNumber}</strong><br/>${data.location}<br/>Status: ${data.status}`);
+      });
+    });
   </script>
 </body>
 </html>
-
