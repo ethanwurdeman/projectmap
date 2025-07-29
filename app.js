@@ -1,9 +1,10 @@
 // app.js (must be in the same repo as index.html)
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
 import {
   getFirestore, collection, addDoc, getDocs, serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore.js';
+} from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
