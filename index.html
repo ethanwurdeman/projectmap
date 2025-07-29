@@ -1,27 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Road Work Map</title>
+  <title>USIC Project Tracker Map</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; }
-    #map { height: 100vh; width: 100%; }
+    html, body, #map { height: 100%; margin: 0; padding: 0; }
+    .popup-form {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .popup-form input, .popup-form select {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    .popup-form button {
+      margin-top: 6px;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <!-- Leaflet core -->
+  <!-- Leaflet Libraries -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-
-  <!-- Leaflet.draw plugin -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
   <script>
-    // Initialize map centered near Scottsbluff, NE
     const map = L.map('map').setView([41.865, -103.667], 12);
 
     // Base layers
@@ -30,29 +39,21 @@
         maxZoom: 20,
         attribution: '&copy; OpenStreetMap contributors'
       }),
-
       "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 20,
         attribution: 'Tiles &copy; Esri'
       }),
-
       "Topographic": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
         maxZoom: 17,
         attribution: '&copy; OpenTopoMap contributors'
       })
     };
-
-    // Add default base layer
     baseLayers["OpenStreetMap"].addTo(map);
-
-    // Add layer switcher
     L.control.layers(baseLayers).addTo(map);
 
-    // Set up drawing layer
     const drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
-    // Add draw controls
     const drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
       draw: {
@@ -60,19 +61,84 @@
         polyline: true,
         rectangle: false,
         circle: false,
-        marker: true
+        marker: false
       }
     });
     map.addControl(drawControl);
 
-    // Handle new drawings
     map.on(L.Draw.Event.CREATED, function (e) {
       const layer = e.layer;
       drawnItems.addLayer(layer);
-      const geojson = layer.toGeoJSON();
-      console.log("Drawn shape GeoJSON:", JSON.stringify(geojson));
-      alert("Shape saved to console (GeoJSON format)");
+      const geojson = JSON.stringify(layer.toGeoJSON());
+
+      const formHtml = `
+        <div class="popup-form">
+          <label>Ticket Number:<br/><input type="text" id="ticketNumber" /></label><br/>
+          <label>Location:<br/><input type="text" id="location" /></label><br/>
+          <label>Work Start Date:<br/><input type="date" id="workStartDate" /></label><br/>
+          <label>Status:<br/>
+            <select id="status">
+              <option value="Not Located">Not Located</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Located">Located</option>
+            </select>
+          </label><br/>
+          <button onclick="submitToSharePoint('${encodeURIComponent(geojson)}')">Submit</button>
+        </div>
+      `;
+
+      layer.bindPopup(formHtml).openPopup();
     });
+
+    async function submitToSharePoint(encodedGeoJSON) {
+      const title = document.getElementById('ticketNumber').value;
+      const location = document.getElementById('location').value;
+      const workStartDate = document.getElementById('workStartDate').value;
+      const status = document.getElementById('status').value;
+      const geojson = decodeURIComponent(encodedGeoJSON);
+
+      const item = {
+        '__metadata': { 'type': 'SP.Data.UsicProjecttrackerListItem' },
+        'Title': title,
+        'Location': location,
+        'Work_x0020_start_x0020_date': workStartDate,
+        'Status': status,
+        'GeoJSON': geojson
+      };
+
+      const siteUrl = "https://usicapps.sharepoint.com/sites/USICProjectTracker";
+      const listName = "USIC Project tracker";
+
+      try {
+        const digest = await fetch(`${siteUrl}/_api/contextinfo`, {
+          method: "POST",
+          headers: { "Accept": "application/json;odata=verbose" }
+        }).then(res => res.json()).then(data => data.d.GetContextWebInformation.FormDigestValue);
+
+        const response = await fetch(`${siteUrl}/_api/web/lists/getbytitle('${listName}')/items`, {
+          method: "POST",
+          headers: {
+            "Accept": "application/json;odata=verbose",
+            "Content-Type": "application/json;odata=verbose",
+            "X-RequestDigest": digest
+          },
+          body: JSON.stringify(item)
+        });
+
+        if (response.ok) {
+          alert("✅ Success! Ticket submitted to SharePoint.");
+          location.reload();
+        } else {
+          alert("❌ Error submitting to SharePoint.");
+          console.error(await response.text());
+        }
+
+      } catch (err) {
+        alert("❌ Error: " + err.message);
+        console.error(err);
+      }
+    }
   </script>
 </body>
 </html>
+
