@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ProjectMap – Interactive Road Work Tracker</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
+
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
@@ -28,16 +28,11 @@
 <body>
   <div id="map"></div>
 
-<!-- ✅ Firebase SDKs (safe + latest compat build) -->
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js" defer></script>
-
-
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-  <!-- Your App Code -->
-  <script src="./app.js" defer></script>
+  <!-- Firebase + App Code (MODULAR) -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
