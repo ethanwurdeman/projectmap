@@ -1,0 +1,36 @@
+// auth-guard.js
+
+// ✅ Initialize Firebase if not already done
+if (!firebase.apps.length) {
+  firebase.initializeApp({
+    apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
+    authDomain: "projectmap-35a69.firebaseapp.com",
+    projectId: "projectmap-35a69"
+  });
+}
+
+// ✅ Auth redirect protection
+firebase.auth().onAuthStateChanged(user => {
+  const path = window.location.pathname;
+  const isLogin = path.includes("login.html");
+
+  if (!user && !isLogin) {
+    window.location.href = "login.html";
+  } else if (user && isLogin) {
+    window.location.href = "admin.html"; // Default route
+  } else {
+    const userInfoBar = document.createElement("div");
+    userInfoBar.style.position = "fixed";
+    userInfoBar.style.top = "0";
+    userInfoBar.style.right = "0";
+    userInfoBar.style.background = "#333";
+    userInfoBar.style.color = "#fff";
+    userInfoBar.style.padding = "5px 15px";
+    userInfoBar.style.fontSize = "14px";
+    userInfoBar.innerHTML = `
+      Logged in as <strong>${user.email}</strong>
+      <button onclick="firebase.auth().signOut().then(() => location.href='login.html')">Sign Out</button>
+    `;
+    document.body.appendChild(userInfoBar);
+  }
+});
