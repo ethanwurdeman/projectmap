@@ -72,7 +72,7 @@ window.submitData = async function(encodedGeoJson) {
       ticketNumber: ticket,
       location: location,
       status: status,
-      geojson: geojson,
+      geojson: JSON.stringify(geojson),
       timestamp: serverTimestamp()
     });
     alert("✅ Segment submitted!");
@@ -87,7 +87,7 @@ window.submitData = async function(encodedGeoJson) {
   const snapshot = await getDocs(collection(db, "segments"));
   snapshot.forEach(doc => {
     const data = doc.data();
-    const shape = L.geoJSON(data.geojson, {
+    const shape = L.geoJSON(JSON.parse(data.geojson), {
       style: {
         color: data.status === "Located" ? "green" : data.status === "In Progress" ? "orange" : "red",
         weight: 4
