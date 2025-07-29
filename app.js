@@ -64,13 +64,13 @@ map.on(L.Draw.Event.CREATED, function (e) {
 window.submitData = async function(encodedGeoJson) {
   const geojson = JSON.parse(encodedGeoJson);
   const ticket = document.getElementById('ticketNumber').value;
-  const location = document.getElementById('location').value;
+  const locationText = document.getElementById('location').value;
   const status = document.getElementById('status').value;
 
   try {
     await addDoc(collection(db, "segments"), {
       ticketNumber: ticket,
-      location: location,
+      location: locationText,
       status: status,
       geojson: JSON.stringify(geojson),  // 🔥 Firestore-safe
       timestamp: serverTimestamp()
