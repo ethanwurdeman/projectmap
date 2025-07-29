@@ -7,23 +7,52 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
   <style>
-    #map { height: 90vh; width: 100%; }
+    body, html { margin: 0; padding: 0; height: 100%; }
+    #map { height: 100vh; width: 100%; }
   </style>
 </head>
 <body>
   <div id="map"></div>
+
+  <!-- Leaflet core -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <!-- Leaflet.draw plugin -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
   <script>
-    const map = L.map('map').setView([41.865, -103.667], 12); // Center near Scottsbluff
+    // Initialize map centered near Scottsbluff, NE
+    const map = L.map('map').setView([41.865, -103.667], 12);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 20,
-    }).addTo(map);
+    // Base layers
+    const baseLayers = {
+      "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+        attribution: '&copy; OpenStreetMap contributors'
+      }),
 
+      "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 20,
+        attribution: 'Tiles &copy; Esri'
+      }),
+
+      "Topographic": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17,
+        attribution: '&copy; OpenTopoMap contributors'
+      })
+    };
+
+    // Add default base layer
+    baseLayers["OpenStreetMap"].addTo(map);
+
+    // Add layer switcher
+    L.control.layers(baseLayers).addTo(map);
+
+    // Set up drawing layer
     const drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
+    // Add draw controls
     const drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
       draw: {
@@ -36,6 +65,7 @@
     });
     map.addControl(drawControl);
 
+    // Handle new drawings
     map.on(L.Draw.Event.CREATED, function (e) {
       const layer = e.layer;
       drawnItems.addLayer(layer);
@@ -46,4 +76,3 @@
   </script>
 </body>
 </html>
-
