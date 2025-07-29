@@ -1,11 +1,10 @@
-// app.js (must be in the same repo as index.html)
-
+// Firebase Modular SDK Imports
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
 import {
   getFirestore, collection, addDoc, getDocs, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
-
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyBizMeB33zvk5Qr9JcE2AJNmx2sr8PnEyk",
   authDomain: "projectmap-35a69.firebaseapp.com",
@@ -15,16 +14,17 @@ const firebaseConfig = {
   appId: "1:676439686152:web:0fdc2d8aab41aec67fa5bd"
 };
 
+// Initialize Firebase & Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Initialize Leaflet map
+// Leaflet Map Init
 const map = L.map('map').setView([41.865, -103.667], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 const drawnItems = new L.FeatureGroup().addTo(map);
 L.control.layers(null, { "Segments": drawnItems }).addTo(map);
 
-// Add drawing controls
+// Drawing Tools
 const drawControl = new L.Control.Draw({
   edit: { featureGroup: drawnItems },
   draw: {
@@ -37,7 +37,7 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
-// Handle new shape creation
+// On draw event: open popup form
 map.on(L.Draw.Event.CREATED, function (e) {
   const layer = e.layer;
   drawnItems.addLayer(layer);
@@ -60,7 +60,7 @@ map.on(L.Draw.Event.CREATED, function (e) {
   layer.bindPopup(popupForm).openPopup();
 });
 
-// Submit data to Firebase
+// Submit to Firestore (stores GeoJSON as string)
 window.submitData = async function(encodedGeoJson) {
   const geojson = JSON.parse(encodedGeoJson);
   const ticket = document.getElementById('ticketNumber').value;
@@ -72,7 +72,7 @@ window.submitData = async function(encodedGeoJson) {
       ticketNumber: ticket,
       location: location,
       status: status,
-      geojson: JSON.stringify(geojson),
+      geojson: JSON.stringify(geojson),  // 🔥 Firestore-safe
       timestamp: serverTimestamp()
     });
     alert("✅ Segment submitted!");
@@ -82,14 +82,15 @@ window.submitData = async function(encodedGeoJson) {
   }
 };
 
-// Load existing segments from Firestore
+// Load stored segments
 (async () => {
   const snapshot = await getDocs(collection(db, "segments"));
   snapshot.forEach(doc => {
     const data = doc.data();
-    const shape = L.geoJSON(JSON.parse(data.geojson), {
+    const shape = L.geoJSON(JSON.parse(data.geojson), {  // 👈 Parse string
       style: {
-        color: data.status === "Located" ? "green" : data.status === "In Progress" ? "orange" : "red",
+        color: data.status === "Located" ? "green" :
+               data.status === "In Progress" ? "orange" : "red",
         weight: 4
       }
     }).addTo(drawnItems);
